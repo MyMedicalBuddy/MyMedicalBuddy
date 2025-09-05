@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || window.location.origin.includes('amplifyapp.com') 
-  ? 'https://your-api-gateway-url.execute-api.us-east-1.amazonaws.com/prod/api'
+  ? 'https://w7s9y8blei.execute-api.eu-north-1.amazonaws.com/dev|g'
   : 'http://localhost:5000/api';
 
 const api = axios.create({
