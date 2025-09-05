@@ -8,10 +8,10 @@ class AWSDB {
     });
     
     this.tables = {
-      users: process.env.USERS_TABLE || 'medical-users',
-      cases: process.env.CASES_TABLE || 'medical-cases', 
-      doctors: process.env.DOCTORS_TABLE || 'medical-doctors',
-      messages: process.env.MESSAGES_TABLE || 'medical-messages'
+      users: 'Users',
+      cases: 'Cases', 
+      doctors: 'Doctors',
+      messages: 'Messages'
     };
   }
 
@@ -36,7 +36,7 @@ class AWSDB {
       // Use GSI for email lookup
       const result = await this.dynamodb.query({
         TableName: this.tables[tableName],
-        IndexName: 'email-index',
+        IndexName: 'EmailIndex',
         KeyConditionExpression: 'email = :email',
         ExpressionAttributeValues: { ':email': value }
       }).promise();
