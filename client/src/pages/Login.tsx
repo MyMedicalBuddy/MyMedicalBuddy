@@ -41,13 +41,13 @@ const Login: React.FC = () => {
 
   return (
     <Box
-      sx={
+      sx={{
         background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
         minHeight: '100vh',
         display: 'flex',
         alignItems: 'center',
         py: 4
-      }
+      }}
     >
       <Container maxWidth="sm">
         <Paper 
@@ -61,13 +61,13 @@ const Login: React.FC = () => {
         >
           <Box textAlign="center" mb={4}>
             <Avatar
-              sx={
+              sx={{
                 bgcolor: 'primary.main',
                 width: 80,
                 height: 80,
                 mx: 'auto',
                 mb: 2
-              }
+              }}
             >
               <LocalHospital sx={{ fontSize: 40 }} />
             </Avatar>
@@ -90,9 +90,9 @@ const Login: React.FC = () => {
               onChange={(e) => setEmail(e.target.value)}
               margin="normal"
               required
-              InputProps={
+              InputProps={{
                 startAdornment: <Email sx={{ mr: 1, color: 'text.secondary' }} />
-              }
+              }}
               sx={{ mb: 2 }}
             />
             
@@ -104,9 +104,9 @@ const Login: React.FC = () => {
               onChange={(e) => setPassword(e.target.value)}
               margin="normal"
               required
-              InputProps={
+              InputProps={{
                 startAdornment: <Lock sx={{ mr: 1, color: 'text.secondary' }} />
-              }
+              }}
               sx={{ mb: 3 }}
             />
             

@@ -77,11 +77,11 @@ const Register: React.FC = () => {
 
   return (
     <Box
-      sx={
+      sx={{
         background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
         minHeight: '100vh',
         py: 4
-      }
+      }}
     >
       <Container maxWidth="md">
         <Paper 
@@ -95,13 +95,13 @@ const Register: React.FC = () => {
         >
           <Box textAlign="center" mb={4}>
             <Avatar
-              sx={
+              sx={{
                 bgcolor: 'primary.main',
                 width: 80,
                 height: 80,
                 mx: 'auto',
                 mb: 2
-              }
+              }}
             >
               <PersonAdd sx={{ fontSize: 40 }} />
             </Avatar>
@@ -125,9 +125,9 @@ const Register: React.FC = () => {
                   value={formData.name}
                   onChange={handleChange}
                   required
-                  InputProps={
+                  InputProps={{
                     startAdornment: <Person sx={{ mr: 1, color: 'text.secondary' }} />
-                  }
+                  }}
                 />
               </Grid>
               
@@ -140,9 +140,9 @@ const Register: React.FC = () => {
                   value={formData.email}
                   onChange={handleChange}
                   required
-                  InputProps={
+                  InputProps={{
                     startAdornment: <Email sx={{ mr: 1, color: 'text.secondary' }} />
-                  }
+                  }}
                 />
               </Grid>
               
@@ -155,9 +155,9 @@ const Register: React.FC = () => {
                   value={formData.password}
                   onChange={handleChange}
                   required
-                  InputProps={
+                  InputProps={{
                     startAdornment: <Lock sx={{ mr: 1, color: 'text.secondary' }} />
-                  }
+                  }}
                 />
               </Grid>
               
@@ -170,9 +170,9 @@ const Register: React.FC = () => {
                   value={formData.confirmPassword}
                   onChange={handleChange}
                   required
-                  InputProps={
+                  InputProps={{
                     startAdornment: <Lock sx={{ mr: 1, color: 'text.secondary' }} />
-                  }
+                  }}
                 />
               </Grid>
               
@@ -199,9 +199,9 @@ const Register: React.FC = () => {
                   value={formData.country}
                   onChange={handleChange}
                   required
-                  InputProps={
+                  InputProps={{
                     startAdornment: <Public sx={{ mr: 1, color: 'text.secondary' }} />
-                  }
+                  }}
                 />
               </Grid>
               
