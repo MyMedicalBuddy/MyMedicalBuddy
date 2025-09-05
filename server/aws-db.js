@@ -32,12 +32,25 @@ class AWSDB {
     const key = Object.keys(criteria)[0];
     const value = criteria[key];
     
-    const result = await this.dynamodb.get({
-      TableName: this.tables[tableName],
-      Key: { [key]: value }
-    }).promise();
-    
-    return result.Item;
+    if (key === 'email') {
+      // Use GSI for email lookup
+      const result = await this.dynamodb.query({
+        TableName: this.tables[tableName],
+        IndexName: 'email-index',
+        KeyConditionExpression: 'email = :email',
+        ExpressionAttributeValues: { ':email': value }
+      }).promise();
+      
+      return result.Items && result.Items.length > 0 ? result.Items[0] : null;
+    } else {
+      // Use primary key lookup
+      const result = await this.dynamodb.get({
+        TableName: this.tables[tableName],
+        Key: { [key]: value }
+      }).promise();
+      
+      return result.Item;
+    }
   }
 
   async findRecords(tableName, criteria = {}) {
