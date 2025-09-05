@@ -15,9 +15,7 @@ import {
   MedicalServices,
   Security,
   Speed,
-  VerifiedUser,
   LocalHospital,
-  Psychology,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 

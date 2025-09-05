@@ -100,6 +100,8 @@ backend:
             --region $AWS_DEFAULT_REGION 2>/dev/null || echo "Permission exists"
         - echo "Backend API URL is https://$API_ID.execute-api.$AWS_DEFAULT_REGION.amazonaws.com/prod"
         - echo "REACT_APP_API_URL=https://$API_ID.execute-api.$AWS_DEFAULT_REGION.amazonaws.com/prod" > client/.env.production
+        - echo "API URL written to client/.env.production:"
+        - cat client/.env.production
         - echo "✅ Backend deployment complete!"
 frontend:
   phases:
