@@ -5,6 +5,7 @@ import CssBaseline from '@mui/material/CssBaseline';
 import { AuthProvider } from './contexts/AuthContext';
 import { useAuth } from './contexts/AuthContext';
 import Navbar from './components/Navbar';
+import LandingPage from './components/LandingPage';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
@@ -16,11 +17,24 @@ import AdminDashboard from './pages/AdminDashboard';
 const theme = createTheme({
   palette: {
     primary: {
-      main: '#1976d2',
+      main: '#667eea',
     },
     secondary: {
-      main: '#dc004e',
+      main: '#2E7D32',
     },
+    background: {
+      default: '#f8f9fa',
+    },
+  },
+  typography: {
+    fontFamily: '"Inter", "Roboto", "Helvetica", "Arial", sans-serif',
+    h1: { fontWeight: 700 },
+    h2: { fontWeight: 700 },
+    h3: { fontWeight: 600 },
+    h4: { fontWeight: 600 },
+  },
+  shape: {
+    borderRadius: 12,
   },
 });
 
@@ -70,7 +84,7 @@ const AppRoutes: React.FC = () => {
           </ProtectedRoute>
         } />
         
-        <Route path="/" element={<Navigate to="/dashboard" />} />
+        <Route path="/" element={!user ? <LandingPage /> : <Navigate to="/dashboard" />} />
       </Routes>
     </Router>
   );
