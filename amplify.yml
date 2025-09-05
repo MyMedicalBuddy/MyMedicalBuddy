@@ -4,6 +4,7 @@ backend:
     build:
       commands:
         - echo "Starting backend deployment..."
+        - export AWS_ACCOUNT_ID=313549094027
         - echo "AWS Account ID is $AWS_ACCOUNT_ID"
         - echo "Region is $AWS_DEFAULT_REGION"
         - |

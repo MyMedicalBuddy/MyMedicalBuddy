@@ -3,8 +3,8 @@
 echo "🔧 Setting up Amplify IAM Role for Full-Stack Deployment"
 echo "======================================================"
 
-# Get AWS Account ID
-AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+# Set AWS Account ID
+AWS_ACCOUNT_ID=313549094027
 echo "AWS Account ID: $AWS_ACCOUNT_ID"
 
 # Create trust policy for Amplify
