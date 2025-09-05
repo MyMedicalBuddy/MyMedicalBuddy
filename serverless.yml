@@ -1,17 +1,41 @@
-service: medical-opinion-api
+service: medical-opinion-platform
 
 provider:
   name: aws
   runtime: nodejs18.x
-  region: us-east-1
+  region: eu-north-1
   stage: ${opt:stage, 'dev'}
   environment:
     NODE_ENV: production
-    JWT_SECRET: ${env:JWT_SECRET}
-  
+    JWT_SECRET: medical-buddy-secret-key-2024
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - dynamodb:Query
+            - dynamodb:Scan
+            - dynamodb:GetItem
+            - dynamodb:PutItem
+            - dynamodb:UpdateItem
+            - dynamodb:DeleteItem
+          Resource:
+            - "arn:aws:dynamodb:${self:provider.region}:*:table/Users"
+            - "arn:aws:dynamodb:${self:provider.region}:*:table/Users/index/*"
+            - "arn:aws:dynamodb:${self:provider.region}:*:table/Cases"
+            - "arn:aws:dynamodb:${self:provider.region}:*:table/Doctors"
+            - "arn:aws:dynamodb:${self:provider.region}:*:table/Messages"
+
+package:
+  patterns:
+    - '!client/**'
+    - '!aws-cdk/**'
+    - '!.serverless/**'
+    - 'server/**'
+
 functions:
   api:
-    handler: server/lambda.handler
+    handler: server/aws-index.handler
     events:
       - http:
           path: /{proxy+}
@@ -24,15 +48,63 @@ functions:
 
 resources:
   Resources:
-    S3Bucket:
-      Type: AWS::S3::Bucket
+    UsersTable:
+      Type: AWS::DynamoDB::Table
       Properties:
-        BucketName: medical-opinion-uploads-${self:provider.stage}
-        PublicAccessBlockConfiguration:
-          BlockPublicAcls: true
-          BlockPublicPolicy: true
-          IgnorePublicAcls: true
-          RestrictPublicBuckets: true
+        TableName: Users
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+          - AttributeName: email
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        GlobalSecondaryIndexes:
+          - IndexName: EmailIndex
+            KeySchema:
+              - AttributeName: email
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+            BillingMode: PAY_PER_REQUEST
+        BillingMode: PAY_PER_REQUEST
+
+    CasesTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: Cases
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        BillingMode: PAY_PER_REQUEST
+
+    DoctorsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: Doctors
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        BillingMode: PAY_PER_REQUEST
+
+    MessagesTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: Messages
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        BillingMode: PAY_PER_REQUEST
 
 plugins:
   - serverless-offline
