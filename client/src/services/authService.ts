@@ -1,6 +1,8 @@
 import axios from 'axios';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+const API_BASE_URL = process.env.REACT_APP_API_URL || window.location.origin.includes('amplifyapp.com') 
+  ? 'https://your-api-gateway-url.execute-api.us-east-1.amazonaws.com/prod/api'
+  : 'http://localhost:5000/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -81,6 +83,16 @@ export const doctorService = {
 export const adminService = {
   getStats: async () => {
     const response = await api.get('/admin/stats');
+    return response.data;
+  },
+
+  getUsers: async () => {
+    const response = await api.get('/admin/users');
+    return response.data;
+  },
+
+  resetPassword: async (email: string, newPassword: string) => {
+    const response = await api.post('/admin/reset-password', { email, newPassword });
     return response.data;
   },
 };

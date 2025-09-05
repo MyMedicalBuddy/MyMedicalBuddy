@@ -422,6 +422,65 @@ app.get('/api/admin/stats', authenticateToken, (req, res) => {
   }
 });
 
+// Admin Reset User Password
+app.post('/api/admin/reset-password', authenticateToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    const { email, newPassword } = req.body;
+    
+    if (!email || !newPassword) {
+      return res.status(400).json({ error: 'Email and new password are required' });
+    }
+
+    // Find user
+    const user = db.findRecord('Users', { email });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Hash new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    
+    // Update password
+    const updatedUser = db.updateRecord('Users', user.id, {
+      password: hashedPassword,
+      updatedAt: new Date().toISOString()
+    });
+
+    res.json({ 
+      message: 'Password reset successfully',
+      user: { id: updatedUser.id, name: updatedUser.name, email: updatedUser.email }
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Admin Get All Users
+app.get('/api/admin/users', authenticateToken, (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    const users = db.readSheet('Users').map(user => ({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      verified: user.verified,
+      createdAt: user.createdAt
+    }));
+
+    res.json(users);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', timestamp: new Date().toISOString() });

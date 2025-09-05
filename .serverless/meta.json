@@ -1,0 +1,264 @@
+{
+  "c:\\Users\\jafar.ibrahim\\Amazon Q\\MyMedicalBuddy\\serverless-aws.yml": {
+    "versionFramework": "4.18.2",
+    "servicePath": "c:\\Users\\jafar.ibrahim\\Amazon Q\\MyMedicalBuddy\\serverless-aws.yml",
+    "serviceConfigFileName": "serverless-aws.yml",
+    "service": {
+      "service": "medical-opinion-platform",
+      "provider": {
+        "name": "aws",
+        "runtime": "nodejs18.x",
+        "region": "us-east-1",
+        "environment": {
+          "JWT_SECRET": "<REDACTED>",
+          "CORS_ORIGIN": "${env:CORS_ORIGIN, '*'}",
+          "USERS_TABLE": "${self:service}-users-${self:provider.stage}",
+          "CASES_TABLE": "${self:service}-cases-${self:provider.stage}",
+          "DOCTORS_TABLE": "${self:service}-doctors-${self:provider.stage}",
+          "MESSAGES_TABLE": "${self:service}-messages-${self:provider.stage}"
+        },
+        "iamRoleStatements": [
+          {
+            "Effect": "Allow",
+            "Action": [
+              "dynamodb:Query",
+              "dynamodb:Scan",
+              "dynamodb:GetItem",
+              "dynamodb:PutItem",
+              "dynamodb:UpdateItem",
+              "dynamodb:DeleteItem"
+            ],
+            "Resource": [
+              "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.USERS_TABLE}",
+              "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.CASES_TABLE}",
+              "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DOCTORS_TABLE}",
+              "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.MESSAGES_TABLE}",
+              "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.USERS_TABLE}/index/*",
+              "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.CASES_TABLE}/index/*"
+            ]
+          }
+        ]
+      },
+      "functions": {
+        "api": {
+          "handler": "server/aws-index.handler",
+          "events": [
+            {
+              "http": {
+                "path": "/{proxy+}",
+                "method": "ANY",
+                "cors": {
+                  "origin": "*",
+                  "headers": [
+                    "Content-Type",
+                    "X-Amz-Date",
+                    "Authorization",
+                    "X-Api-Key",
+                    "X-Amz-Security-Token",
+                    "X-Amz-User-Agent"
+                  ],
+                  "allowCredentials": "<REDACTED>"
+                }
+              }
+            }
+          ]
+        }
+      },
+      "resources": {
+        "Resources": {
+          "UsersTable": {
+            "Type": "AWS::DynamoDB::Table",
+            "Properties": {
+              "TableName": "${self:provider.environment.USERS_TABLE}",
+              "AttributeDefinitions": [
+                {
+                  "AttributeName": "id",
+                  "AttributeType": "S"
+                },
+                {
+                  "AttributeName": "email",
+                  "AttributeType": "S"
+                }
+              ],
+              "KeySchema": [
+                {
+                  "AttributeName": "id",
+                  "KeyType": "HASH"
+                }
+              ],
+              "GlobalSecondaryIndexes": [
+                {
+                  "IndexName": "email-index",
+                  "KeySchema": [
+                    {
+                      "AttributeName": "email",
+                      "KeyType": "HASH"
+                    }
+                  ],
+                  "Projection": {
+                    "ProjectionType": "ALL"
+                  },
+                  "BillingMode": "PAY_PER_REQUEST"
+                }
+              ],
+              "BillingMode": "PAY_PER_REQUEST"
+            }
+          },
+          "CasesTable": {
+            "Type": "AWS::DynamoDB::Table",
+            "Properties": {
+              "TableName": "${self:provider.environment.CASES_TABLE}",
+              "AttributeDefinitions": [
+                {
+                  "AttributeName": "id",
+                  "AttributeType": "S"
+                },
+                {
+                  "AttributeName": "userId",
+                  "AttributeType": "S"
+                }
+              ],
+              "KeySchema": [
+                {
+                  "AttributeName": "id",
+                  "KeyType": "HASH"
+                }
+              ],
+              "GlobalSecondaryIndexes": [
+                {
+                  "IndexName": "userId-index",
+                  "KeySchema": [
+                    {
+                      "AttributeName": "userId",
+                      "KeyType": "HASH"
+                    }
+                  ],
+                  "Projection": {
+                    "ProjectionType": "ALL"
+                  },
+                  "BillingMode": "PAY_PER_REQUEST"
+                }
+              ],
+              "BillingMode": "PAY_PER_REQUEST"
+            }
+          },
+          "DoctorsTable": {
+            "Type": "AWS::DynamoDB::Table",
+            "Properties": {
+              "TableName": "${self:provider.environment.DOCTORS_TABLE}",
+              "AttributeDefinitions": [
+                {
+                  "AttributeName": "id",
+                  "AttributeType": "S"
+                }
+              ],
+              "KeySchema": [
+                {
+                  "AttributeName": "id",
+                  "KeyType": "HASH"
+                }
+              ],
+              "BillingMode": "PAY_PER_REQUEST"
+            }
+          },
+          "MessagesTable": {
+            "Type": "AWS::DynamoDB::Table",
+            "Properties": {
+              "TableName": "${self:provider.environment.MESSAGES_TABLE}",
+              "AttributeDefinitions": [
+                {
+                  "AttributeName": "id",
+                  "AttributeType": "S"
+                },
+                {
+                  "AttributeName": "caseId",
+                  "AttributeType": "S"
+                }
+              ],
+              "KeySchema": [
+                {
+                  "AttributeName": "id",
+                  "KeyType": "HASH"
+                }
+              ],
+              "GlobalSecondaryIndexes": [
+                {
+                  "IndexName": "caseId-index",
+                  "KeySchema": [
+                    {
+                      "AttributeName": "caseId",
+                      "KeyType": "HASH"
+                    }
+                  ],
+                  "Projection": {
+                    "ProjectionType": "ALL"
+                  },
+                  "BillingMode": "PAY_PER_REQUEST"
+                }
+              ],
+              "BillingMode": "PAY_PER_REQUEST"
+            }
+          }
+        }
+      },
+      "plugins": [
+        "serverless-offline"
+      ],
+      "custom": {
+        "serverless-offline": {
+          "httpPort": 5000
+        }
+      }
+    },
+    "provider": {
+      "name": "aws",
+      "runtime": "nodejs18.x",
+      "region": "us-east-1",
+      "environment": {
+        "JWT_SECRET": "<REDACTED>",
+        "CORS_ORIGIN": "${env:CORS_ORIGIN, '*'}",
+        "USERS_TABLE": "${self:service}-users-${self:provider.stage}",
+        "CASES_TABLE": "${self:service}-cases-${self:provider.stage}",
+        "DOCTORS_TABLE": "${self:service}-doctors-${self:provider.stage}",
+        "MESSAGES_TABLE": "${self:service}-messages-${self:provider.stage}"
+      },
+      "iamRoleStatements": [
+        {
+          "Effect": "Allow",
+          "Action": [
+            "dynamodb:Query",
+            "dynamodb:Scan",
+            "dynamodb:GetItem",
+            "dynamodb:PutItem",
+            "dynamodb:UpdateItem",
+            "dynamodb:DeleteItem"
+          ],
+          "Resource": [
+            "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.USERS_TABLE}",
+            "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.CASES_TABLE}",
+            "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DOCTORS_TABLE}",
+            "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.MESSAGES_TABLE}",
+            "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.USERS_TABLE}/index/*",
+            "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.CASES_TABLE}/index/*"
+          ]
+        }
+      ]
+    },
+    "error": {
+      "message": "You must sign in or use a license key with Serverless Framework V.4 and later versions. Please use \"serverless login\".",
+      "stack": "Error: You must sign in or use a license key with Serverless Framework V.4 and later versions. Please use \"serverless login\".\n    at Authentication.getAuthenticatedData (file:///C:/Users/jafar.ibrahim/.serverless/releases/4.18.2/package/dist/sf-core.js:806:10899)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at async Authentication.authenticate (file:///C:/Users/jafar.ibrahim/.serverless/releases/4.18.2/package/dist/sf-core.js:808:22245)\n    at async TraditionalRunner.resolveVariablesAndAuthenticate (file:///C:/Users/jafar.ibrahim/.serverless/releases/4.18.2/package/dist/sf-core.js:812:2379)\n    at async TraditionalRunner.run (file:///C:/Users/jafar.ibrahim/.serverless/releases/4.18.2/package/dist/sf-core.js:1428:27914)\n    at async route (file:///C:/Users/jafar.ibrahim/.serverless/releases/4.18.2/package/dist/sf-core.js:1603:2878)\n    at async Object.run (file:///C:/Users/jafar.ibrahim/.serverless/releases/4.18.2/package/dist/sf-core.js:1604:3661)\n    at async run2 (file:///C:/Users/jafar.ibrahim/.serverless/releases/4.18.2/package/dist/sf-core.js:1604:4815)"
+    },
+    "serviceRawFile": "service: medical-opinion-platform\n\nprovider:\n  name: aws\n  runtime: nodejs18.x\n  region: us-east-1\n  environment:\n    JWT_SECRET: ${env:JWT_SECRET, 'medical_buddy_secret_2024'}\n    CORS_ORIGIN: ${env:CORS_ORIGIN, '*'}\n    USERS_TABLE: ${self:service}-users-${self:provider.stage}\n    CASES_TABLE: ${self:service}-cases-${self:provider.stage}\n    DOCTORS_TABLE: ${self:service}-doctors-${self:provider.stage}\n    MESSAGES_TABLE: ${self:service}-messages-${self:provider.stage}\n  iamRoleStatements:\n    - Effect: Allow\n      Action:\n        - dynamodb:Query\n        - dynamodb:Scan\n        - dynamodb:GetItem\n        - dynamodb:PutItem\n        - dynamodb:UpdateItem\n        - dynamodb:DeleteItem\n      Resource:\n        - \"arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.USERS_TABLE}\"\n        - \"arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.CASES_TABLE}\"\n        - \"arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DOCTORS_TABLE}\"\n        - \"arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.MESSAGES_TABLE}\"\n        - \"arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.USERS_TABLE}/index/*\"\n        - \"arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.CASES_TABLE}/index/*\"\n\nfunctions:\n  api:\n    handler: server/aws-index.handler\n    events:\n      - http:\n          path: /{proxy+}\n          method: ANY\n          cors:\n            origin: '*'\n            headers:\n              - Content-Type\n              - X-Amz-Date\n              - Authorization\n              - X-Api-Key\n              - X-Amz-Security-Token\n              - X-Amz-User-Agent\n            allowCredentials: true\n\nresources:\n  Resources:\n    UsersTable:\n      Type: AWS::DynamoDB::Table\n      Properties:\n        TableName: ${self:provider.environment.USERS_TABLE}\n        AttributeDefinitions:\n          - AttributeName: id\n            AttributeType: S\n          - AttributeName: email\n            AttributeType: S\n        KeySchema:\n          - AttributeName: id\n            KeyType: HASH\n        GlobalSecondaryIndexes:\n          - IndexName: email-index\n            KeySchema:\n              - AttributeName: email\n                KeyType: HASH\n            Projection:\n              ProjectionType: ALL\n            BillingMode: PAY_PER_REQUEST\n        BillingMode: PAY_PER_REQUEST\n\n    CasesTable:\n      Type: AWS::DynamoDB::Table\n      Properties:\n        TableName: ${self:provider.environment.CASES_TABLE}\n        AttributeDefinitions:\n          - AttributeName: id\n            AttributeType: S\n          - AttributeName: userId\n            AttributeType: S\n        KeySchema:\n          - AttributeName: id\n            KeyType: HASH\n        GlobalSecondaryIndexes:\n          - IndexName: userId-index\n            KeySchema:\n              - AttributeName: userId\n                KeyType: HASH\n            Projection:\n              ProjectionType: ALL\n            BillingMode: PAY_PER_REQUEST\n        BillingMode: PAY_PER_REQUEST\n\n    DoctorsTable:\n      Type: AWS::DynamoDB::Table\n      Properties:\n        TableName: ${self:provider.environment.DOCTORS_TABLE}\n        AttributeDefinitions:\n          - AttributeName: id\n            AttributeType: S\n        KeySchema:\n          - AttributeName: id\n            KeyType: HASH\n        BillingMode: PAY_PER_REQUEST\n\n    MessagesTable:\n      Type: AWS::DynamoDB::Table\n      Properties:\n        TableName: ${self:provider.environment.MESSAGES_TABLE}\n        AttributeDefinitions:\n          - AttributeName: id\n            AttributeType: S\n          - AttributeName: caseId\n            AttributeType: S\n        KeySchema:\n          - AttributeName: id\n            KeyType: HASH\n        GlobalSecondaryIndexes:\n          - IndexName: caseId-index\n            KeySchema:\n              - AttributeName: caseId\n                KeyType: HASH\n            Projection:\n              ProjectionType: ALL\n            BillingMode: PAY_PER_REQUEST\n        BillingMode: PAY_PER_REQUEST\n\nplugins:\n  - serverless-offline\n\ncustom:\n  serverless-offline:\n    httpPort: 5000",
+    "command": [
+      "deploy"
+    ],
+    "options": {
+      "config": "serverless-aws.yml"
+    },
+    "serviceProviderAwsCfStackId": null,
+    "serviceProviderAwsCfStackCreated": null,
+    "serviceProviderAwsCfStackUpdated": null,
+    "serviceProviderAwsCfStackStatus": null,
+    "serviceProviderAwsCfStackOutputs": null
+  }
+}

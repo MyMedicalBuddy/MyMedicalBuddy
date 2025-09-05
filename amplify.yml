@@ -1,4 +1,12 @@
 version: 1
+backend:
+  phases:
+    build:
+      commands:
+        - npm install
+        - npm install -g serverless@3.38.0
+        - cd server && npm install
+        - serverless deploy --config ../serverless-aws.yml --stage prod
 frontend:
   phases:
     preBuild:

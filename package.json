@@ -13,7 +13,13 @@
     "seed": "cd server && npm run seed",
     "heroku-postbuild": "cd client && npm install && npm run build"
   },
+  "dependencies": {
+    "aws-sdk": "^2.1691.0",
+    "serverless-http": "^3.4.0"
+  },
   "devDependencies": {
-    "concurrently": "^8.2.2"
+    "concurrently": "^8.2.2",
+    "serverless": "^3.38.0",
+    "serverless-offline": "^13.8.0"
   }
 }
