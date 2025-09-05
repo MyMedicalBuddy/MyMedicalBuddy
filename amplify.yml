@@ -7,8 +7,8 @@ backend:
         - export AWS_ACCOUNT_ID=313549094027
         - echo "AWS Account ID is $AWS_ACCOUNT_ID"
         - echo "Region is $AWS_DEFAULT_REGION"
+        - echo "Creating DynamoDB table..."
         - |
-          # Create DynamoDB table if it doesn't exist
           aws dynamodb create-table \
             --table-name Users \
             --attribute-definitions \
@@ -24,11 +24,10 @@ backend:
         - npm install --production --silent
         - zip -r ../backend.zip . >/dev/null
         - cd ..
-        - echo "Deploying Lambda function..."
+        - echo "Creating Lambda function..."
         - |
-          # Try to create Lambda function, if it fails, update it
           aws lambda create-function \
-            --function-name medical-app-amplify \
+            --function-name medical-app-working \
             --runtime nodejs18.x \
             --role arn:aws:iam::$AWS_ACCOUNT_ID:role/amplifyconsole-backend-role \
             --handler aws-index.handler \
@@ -38,90 +37,49 @@ backend:
             --memory-size 256 \
             --region $AWS_DEFAULT_REGION 2>/dev/null || \
           aws lambda update-function-code \
-            --function-name medical-app-amplify \
+            --function-name medical-app-working \
             --zip-file fileb://backend.zip \
             --region $AWS_DEFAULT_REGION
-        - echo "Setting up API Gateway..."
-        - echo "Creating API Gateway..."
+        - echo "Creating simple API Gateway..."
         - |
           API_ID=$(aws apigatewayv2 create-api \
-            --name medical-api-amplify-$(date +%s) \
+            --name medical-simple-api \
             --protocol-type HTTP \
             --cors-configuration AllowOrigins="*",AllowMethods="*",AllowHeaders="*" \
             --region $AWS_DEFAULT_REGION \
-            --query ApiId --output text 2>/dev/null || echo "")
+            --query ApiId --output text)
+          echo "Created API with ID: $API_ID"
+        - |
+          INTEGRATION_ID=$(aws apigatewayv2 create-integration \
+            --api-id $API_ID \
+            --integration-type AWS_PROXY \
+            --integration-uri arn:aws:lambda:$AWS_DEFAULT_REGION:$AWS_ACCOUNT_ID:function:medical-app-working \
+            --payload-format-version 2.0 \
+            --region $AWS_DEFAULT_REGION \
+            --query IntegrationId --output text)
+          echo "Created integration with ID: $INTEGRATION_ID"
+        - |
+          aws apigatewayv2 create-route \
+            --api-id $API_ID \
+            --route-key 'ANY /{proxy+}' \
+            --target integrations/$INTEGRATION_ID \
+            --region $AWS_DEFAULT_REGION
           
-          if [ "$API_ID" = "" ]; then
-            echo "Failed to create API Gateway, trying to find existing..."
-            API_ID=$(aws apigatewayv2 get-apis \
-              --query "Items[?contains(Name,'medical-api')].ApiId | [0]" \
-              --output text \
-              --region $AWS_DEFAULT_REGION 2>/dev/null || echo "")
-          fi
-          
-          if [ "$API_ID" = "" ] || [ "$API_ID" = "None" ]; then
-            echo "No API found, using fallback API creation..."
-            API_ID="fallback-$(date +%s)"
-          fi
-          
-          echo "API_ID is: $API_ID"
+          aws apigatewayv2 create-stage \
+            --api-id $API_ID \
+            --stage-name prod \
+            --auto-deploy \
+            --region $AWS_DEFAULT_REGION
         - |
-          if [ "$API_ID" != "" ] && [ "$API_ID" != "None" ] && [[ "$API_ID" != fallback-* ]]; then
-            echo "Creating integration for API: $API_ID"
-            INTEGRATION_ID=$(aws apigatewayv2 create-integration \
-              --api-id $API_ID \
-              --integration-type AWS_PROXY \
-              --integration-uri arn:aws:lambda:$AWS_DEFAULT_REGION:$AWS_ACCOUNT_ID:function:medical-app-amplify \
-              --payload-format-version 2.0 \
-              --region $AWS_DEFAULT_REGION \
-              --query IntegrationId --output text 2>/dev/null || echo "integration-exists")
-          else
-            echo "Skipping integration creation - invalid API_ID"
-            INTEGRATION_ID="skip"
-          fi
-        - |
-          if [ "$INTEGRATION_ID" != "skip" ]; then
-            echo "Creating routes..."
-            aws apigatewayv2 create-route \
-              --api-id $API_ID \
-              --route-key 'ANY /{proxy+}' \
-              --target integrations/$INTEGRATION_ID \
-              --region $AWS_DEFAULT_REGION 2>/dev/null || echo "Route exists"
-            
-            aws apigatewayv2 create-route \
-              --api-id $API_ID \
-              --route-key '$default' \
-              --target integrations/$INTEGRATION_ID \
-              --region $AWS_DEFAULT_REGION 2>/dev/null || echo "Default route exists"
-          fi
-        - |
-          if [ "$API_ID" != "" ] && [ "$API_ID" != "None" ] && [[ "$API_ID" != fallback-* ]]; then
-            echo "Creating stage..."
-            aws apigatewayv2 create-stage \
-              --api-id $API_ID \
-              --stage-name prod \
-              --auto-deploy \
-              --region $AWS_DEFAULT_REGION 2>/dev/null || echo "Stage exists"
-          fi
-        - |
-          if [ "$API_ID" != "" ] && [ "$API_ID" != "None" ] && [[ "$API_ID" != fallback-* ]]; then
-            echo "Adding Lambda permission..."
-            aws lambda add-permission \
-              --function-name medical-app-amplify \
-              --statement-id api-gateway-amplify-$(date +%s) \
-              --action lambda:InvokeFunction \
-              --principal apigateway.amazonaws.com \
-              --source-arn "arn:aws:execute-api:$AWS_DEFAULT_REGION:$AWS_ACCOUNT_ID:$API_ID/*/*" \
-              --region $AWS_DEFAULT_REGION 2>/dev/null || echo "Permission exists"
-          fi
-        - |
-          if [ "$API_ID" != "" ] && [ "$API_ID" != "None" ] && [[ "$API_ID" != fallback-* ]]; then
-            echo "Backend API URL is https://$API_ID.execute-api.$AWS_DEFAULT_REGION.amazonaws.com/prod"
-            echo "REACT_APP_API_URL=https://$API_ID.execute-api.$AWS_DEFAULT_REGION.amazonaws.com/prod" > client/.env.production
-          else
-            echo "API Gateway creation failed, using existing working API"
-            echo "REACT_APP_API_URL=https://4kzlrotlw5.execute-api.eu-north-1.amazonaws.com/dev" > client/.env.production
-          fi
+          aws lambda add-permission \
+            --function-name medical-app-working \
+            --statement-id api-gateway-permission \
+            --action lambda:InvokeFunction \
+            --principal apigateway.amazonaws.com \
+            --source-arn "arn:aws:execute-api:$AWS_DEFAULT_REGION:$AWS_ACCOUNT_ID:$API_ID/*/*" \
+            --region $AWS_DEFAULT_REGION 2>/dev/null || echo "Permission already exists"
+        - echo "Backend API URL is https://$API_ID.execute-api.$AWS_DEFAULT_REGION.amazonaws.com/prod"
+        - echo "REACT_APP_API_URL=https://$API_ID.execute-api.$AWS_DEFAULT_REGION.amazonaws.com/prod" > client/.env.production
         - echo "API URL written to client/.env.production:"
         - cat client/.env.production
         - echo "✅ Backend deployment complete!"
