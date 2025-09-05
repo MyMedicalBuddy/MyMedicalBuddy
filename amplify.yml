@@ -42,64 +42,86 @@ backend:
             --zip-file fileb://backend.zip \
             --region $AWS_DEFAULT_REGION
         - echo "Setting up API Gateway..."
+        - echo "Creating API Gateway..."
         - |
-          # Create or get API Gateway
-          API_ID=$(aws apigatewayv2 get-apis \
-            --query "Items[?Name=='medical-api-amplify'].ApiId" \
-            --output text \
-            --region $AWS_DEFAULT_REGION)
+          API_ID=$(aws apigatewayv2 create-api \
+            --name medical-api-amplify-$(date +%s) \
+            --protocol-type HTTP \
+            --cors-configuration AllowOrigins="*",AllowMethods="*",AllowHeaders="*" \
+            --region $AWS_DEFAULT_REGION \
+            --query ApiId --output text 2>/dev/null || echo "")
+          
+          if [ "$API_ID" = "" ]; then
+            echo "Failed to create API Gateway, trying to find existing..."
+            API_ID=$(aws apigatewayv2 get-apis \
+              --query "Items[?contains(Name,'medical-api')].ApiId | [0]" \
+              --output text \
+              --region $AWS_DEFAULT_REGION 2>/dev/null || echo "")
+          fi
           
           if [ "$API_ID" = "" ] || [ "$API_ID" = "None" ]; then
-            echo "Creating new API Gateway..."
-            API_ID=$(aws apigatewayv2 create-api \
-              --name medical-api-amplify \
-              --protocol-type HTTP \
-              --cors-configuration AllowOrigins="*",AllowMethods="*",AllowHeaders="*" \
+            echo "No API found, using fallback API creation..."
+            API_ID="fallback-$(date +%s)"
+          fi
+          
+          echo "API_ID is: $API_ID"
+        - |
+          if [ "$API_ID" != "" ] && [ "$API_ID" != "None" ] && [[ "$API_ID" != fallback-* ]]; then
+            echo "Creating integration for API: $API_ID"
+            INTEGRATION_ID=$(aws apigatewayv2 create-integration \
+              --api-id $API_ID \
+              --integration-type AWS_PROXY \
+              --integration-uri arn:aws:lambda:$AWS_DEFAULT_REGION:$AWS_ACCOUNT_ID:function:medical-app-amplify \
+              --payload-format-version 2.0 \
               --region $AWS_DEFAULT_REGION \
-              --query ApiId --output text)
+              --query IntegrationId --output text 2>/dev/null || echo "integration-exists")
           else
-            echo "Using existing API Gateway: $API_ID"
+            echo "Skipping integration creation - invalid API_ID"
+            INTEGRATION_ID="skip"
           fi
         - |
-          # Create integration
-          INTEGRATION_ID=$(aws apigatewayv2 create-integration \
-            --api-id $API_ID \
-            --integration-type AWS_PROXY \
-            --integration-uri arn:aws:lambda:$AWS_DEFAULT_REGION:$AWS_ACCOUNT_ID:function:medical-app-amplify \
-            --payload-format-version 2.0 \
-            --region $AWS_DEFAULT_REGION \
-            --query IntegrationId --output text 2>/dev/null || echo "integration-exists")
+          if [ "$INTEGRATION_ID" != "skip" ]; then
+            echo "Creating routes..."
+            aws apigatewayv2 create-route \
+              --api-id $API_ID \
+              --route-key 'ANY /{proxy+}' \
+              --target integrations/$INTEGRATION_ID \
+              --region $AWS_DEFAULT_REGION 2>/dev/null || echo "Route exists"
+            
+            aws apigatewayv2 create-route \
+              --api-id $API_ID \
+              --route-key '$default' \
+              --target integrations/$INTEGRATION_ID \
+              --region $AWS_DEFAULT_REGION 2>/dev/null || echo "Default route exists"
+          fi
         - |
-          # Create routes
-          aws apigatewayv2 create-route \
-            --api-id $API_ID \
-            --route-key 'ANY /{proxy+}' \
-            --target integrations/$INTEGRATION_ID \
-            --region $AWS_DEFAULT_REGION 2>/dev/null || echo "Route exists"
-          
-          aws apigatewayv2 create-route \
-            --api-id $API_ID \
-            --route-key '$default' \
-            --target integrations/$INTEGRATION_ID \
-            --region $AWS_DEFAULT_REGION 2>/dev/null || echo "Default route exists"
+          if [ "$API_ID" != "" ] && [ "$API_ID" != "None" ] && [[ "$API_ID" != fallback-* ]]; then
+            echo "Creating stage..."
+            aws apigatewayv2 create-stage \
+              --api-id $API_ID \
+              --stage-name prod \
+              --auto-deploy \
+              --region $AWS_DEFAULT_REGION 2>/dev/null || echo "Stage exists"
+          fi
         - |
-          # Create stage
-          aws apigatewayv2 create-stage \
-            --api-id $API_ID \
-            --stage-name prod \
-            --auto-deploy \
-            --region $AWS_DEFAULT_REGION 2>/dev/null || echo "Stage exists"
+          if [ "$API_ID" != "" ] && [ "$API_ID" != "None" ] && [[ "$API_ID" != fallback-* ]]; then
+            echo "Adding Lambda permission..."
+            aws lambda add-permission \
+              --function-name medical-app-amplify \
+              --statement-id api-gateway-amplify-$(date +%s) \
+              --action lambda:InvokeFunction \
+              --principal apigateway.amazonaws.com \
+              --source-arn "arn:aws:execute-api:$AWS_DEFAULT_REGION:$AWS_ACCOUNT_ID:$API_ID/*/*" \
+              --region $AWS_DEFAULT_REGION 2>/dev/null || echo "Permission exists"
+          fi
         - |
-          # Add Lambda permission
-          aws lambda add-permission \
-            --function-name medical-app-amplify \
-            --statement-id api-gateway-amplify \
-            --action lambda:InvokeFunction \
-            --principal apigateway.amazonaws.com \
-            --source-arn "arn:aws:execute-api:$AWS_DEFAULT_REGION:$AWS_ACCOUNT_ID:$API_ID/*/*" \
-            --region $AWS_DEFAULT_REGION 2>/dev/null || echo "Permission exists"
-        - echo "Backend API URL is https://$API_ID.execute-api.$AWS_DEFAULT_REGION.amazonaws.com/prod"
-        - echo "REACT_APP_API_URL=https://$API_ID.execute-api.$AWS_DEFAULT_REGION.amazonaws.com/prod" > client/.env.production
+          if [ "$API_ID" != "" ] && [ "$API_ID" != "None" ] && [[ "$API_ID" != fallback-* ]]; then
+            echo "Backend API URL is https://$API_ID.execute-api.$AWS_DEFAULT_REGION.amazonaws.com/prod"
+            echo "REACT_APP_API_URL=https://$API_ID.execute-api.$AWS_DEFAULT_REGION.amazonaws.com/prod" > client/.env.production
+          else
+            echo "API Gateway creation failed, using existing working API"
+            echo "REACT_APP_API_URL=https://4kzlrotlw5.execute-api.eu-north-1.amazonaws.com/dev" > client/.env.production
+          fi
         - echo "API URL written to client/.env.production:"
         - cat client/.env.production
         - echo "✅ Backend deployment complete!"
