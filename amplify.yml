@@ -7,6 +7,25 @@ backend:
         - export AWS_ACCOUNT_ID=313549094027
         - echo "AWS Account ID is $AWS_ACCOUNT_ID"
         - echo "Region is $AWS_DEFAULT_REGION"
+        - echo "Creating IAM role..."
+        - |
+          aws iam create-role \
+            --role-name amplifyconsole-backend-role \
+            --assume-role-policy-document '{
+              "Version": "2012-10-17",
+              "Statement": [{
+                "Effect": "Allow",
+                "Principal": {"Service": ["amplify.amazonaws.com", "lambda.amazonaws.com"]},
+                "Action": "sts:AssumeRole"
+              }]
+            }' 2>/dev/null || echo "Role already exists"
+          
+          aws iam attach-role-policy --role-name amplifyconsole-backend-role --policy-arn arn:aws:iam::aws:policy/AWSLambda_FullAccess 2>/dev/null
+          aws iam attach-role-policy --role-name amplifyconsole-backend-role --policy-arn arn:aws:iam::aws:policy/AmazonAPIGatewayAdministrator 2>/dev/null
+          aws iam attach-role-policy --role-name amplifyconsole-backend-role --policy-arn arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess 2>/dev/null
+          aws iam attach-role-policy --role-name amplifyconsole-backend-role --policy-arn arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole 2>/dev/null
+          
+          sleep 10
         - echo "Creating DynamoDB table..."
         - |
           aws dynamodb create-table \
@@ -28,10 +47,10 @@ backend:
         - zip -r ../backend.zip . >/dev/null
         - cd ..
         - rm -rf lambda-package
-        - echo "Creating Lambda function with timeout..."
+        - echo "Creating Lambda function..."
         - |
-          timeout 120 aws lambda create-function \
-            --function-name medical-app-working \
+          aws lambda create-function \
+            --function-name medical-app-final \
             --runtime nodejs18.x \
             --role arn:aws:iam::$AWS_ACCOUNT_ID:role/amplifyconsole-backend-role \
             --handler aws-index.handler \
@@ -40,29 +59,25 @@ backend:
             --timeout 30 \
             --memory-size 256 \
             --region $AWS_DEFAULT_REGION || \
-          timeout 60 aws lambda update-function-code \
-            --function-name medical-app-working \
+          aws lambda update-function-code \
+            --function-name medical-app-final \
             --zip-file fileb://backend.zip \
             --region $AWS_DEFAULT_REGION
         - echo "Lambda function created successfully"
         - echo "Creating API Gateway..."
         - |
-          API_ID=$(timeout 60 aws apigatewayv2 create-api \
-            --name medical-simple-api-$(date +%s) \
+          API_ID=$(aws apigatewayv2 create-api \
+            --name medical-final-api \
             --protocol-type HTTP \
             --cors-configuration AllowOrigins="*",AllowMethods="*",AllowHeaders="*" \
             --region $AWS_DEFAULT_REGION \
             --query ApiId --output text)
           echo "Created API with ID: $API_ID"
-          if [ "$API_ID" = "" ] || [ "$API_ID" = "None" ]; then
-            echo "ERROR: Failed to create API Gateway"
-            exit 1
-          fi
         - |
           INTEGRATION_ID=$(aws apigatewayv2 create-integration \
             --api-id $API_ID \
             --integration-type AWS_PROXY \
-            --integration-uri arn:aws:lambda:$AWS_DEFAULT_REGION:$AWS_ACCOUNT_ID:function:medical-app-working \
+            --integration-uri arn:aws:lambda:$AWS_DEFAULT_REGION:$AWS_ACCOUNT_ID:function:medical-app-final \
             --payload-format-version 2.0 \
             --region $AWS_DEFAULT_REGION \
             --query IntegrationId --output text)
@@ -81,7 +96,7 @@ backend:
             --region $AWS_DEFAULT_REGION
         - |
           aws lambda add-permission \
-            --function-name medical-app-working \
+            --function-name medical-app-final \
             --statement-id api-gateway-permission \
             --action lambda:InvokeFunction \
             --principal apigateway.amazonaws.com \
